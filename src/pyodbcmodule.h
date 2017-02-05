@@ -28,6 +28,7 @@ extern PyObject* NotSupportedError;
 extern PyObject* null_binary;
 
 extern PyObject* decimal_type;
+extern PyObject* uuid_type;
 
 inline bool PyDecimal_Check(PyObject* p)
 {

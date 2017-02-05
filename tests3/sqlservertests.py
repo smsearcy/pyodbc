@@ -27,7 +27,7 @@ is installed:
   2008: DRIVER={SQL Server Native Client 10.0}
 """
 
-import sys, os, re
+import sys, os, re, uuid
 import unittest
 from decimal import Decimal
 from datetime import datetime, date, time
@@ -156,6 +156,23 @@ class SqlServerTestCase(unittest.TestCase):
         v = self.cursor.execute("select * from t1").fetchone()[0]
         self.assertEqual(type(v), str)
         self.assertEqual(len(v), 36)
+
+    def test_uuid(self):
+        # The current default is to return UUIDs as strings, but it is common to want uuid.UUID
+        # objects.  Testing the work around.
+        value = uuid.uuid4()
+        self.cursor.execute("create table t1(n uniqueidentifier)")
+        self.cursor.execute("insert into t1 values (?)", value)
+
+        def convert(value):
+            # The value is the raw bytes (as a bytes object) read from the database.
+            return uuid.UUID(bytes=value)
+
+        self.cnxn.add_output_converter(pyodbc.SQL_GUID, convert)
+        result = self.cursor.execute("select n from t1").fetchval()
+        self.assertEqual(value, result)
+
+        self.cnxn.clear_output_converters()
 
     def test_nextset(self):
         self.cursor.execute("create table t1(i int)")
@@ -625,7 +642,6 @@ class SqlServerTestCase(unittest.TestCase):
         self.cursor.execute("insert into t1 values (?)", value)
         result  = self.cursor.execute("select n from t1").fetchone()[0]
         self.assertEqual(value, result)
-
 
     #
     # stored procedures

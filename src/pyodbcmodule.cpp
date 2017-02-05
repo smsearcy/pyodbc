@@ -1,4 +1,3 @@
-
 // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 // documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
 // rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
@@ -127,6 +126,7 @@ static ExcInfo aExcInfos[] = {
 
 
 PyObject* decimal_type;
+PyObject* uuid_type;
 
 HENV henv = SQL_NULL_HANDLE;
 
@@ -181,25 +181,37 @@ static bool import_types()
     if (!Params_init())
         return false;
 
-    PyObject* decimalmod = PyImport_ImportModule("cdecimal");
-    if (!decimalmod)
+    Object mod(PyImport_ImportModule("cdecimal"));
+    if (!mod)
     {
-        // Clear the error from the failed import of cdecimal.
         PyErr_Clear();
-        decimalmod = PyImport_ImportModule("decimal");
-        if (!decimalmod) {
+        mod.Attach(PyImport_ImportModule("decimal"));
+        if (!mod)
+        {
             PyErr_SetString(PyExc_RuntimeError, "Unable to import cdecimal or decimal");
             return false;
         }
     }
 
-    decimal_type = PyObject_GetAttrString(decimalmod, "Decimal");
-    Py_DECREF(decimalmod);
-
-    if (decimal_type == 0)
+    Object dec(PyObject_GetAttrString(mod, "Decimal"));
+    if (!dec)
+    {
         PyErr_SetString(PyExc_RuntimeError, "Unable to import decimal.Decimal.");
+        return false;
+    }
 
-    return decimal_type != 0;
+    mod = PyImport_ImportModule("uuid");
+    if (!mod)
+        return false;
+
+    Object uuid(PyObject_GetAttrString(mod, "UUID"));
+    if (!uuid)
+        return false;
+
+    decimal_type = dec.Detach();
+    uuid_type    = uuid.Detach();
+
+    return true;
 }
 
 
@@ -1154,4 +1166,3 @@ static PyObject* MakeConnectionString(PyObject* existing, PyObject* parts)
 
     return result;
 }
-
